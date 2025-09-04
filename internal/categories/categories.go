@@ -8,6 +8,7 @@ type Framework string
 const (
 	Mitre      Framework = "MITRE"
 	MitreAtlas Framework = "MITRE-ATLAS"
+	OWASP      Framework = "OWASP"
 )
 
 // mitreTactics struct to hold MITRE categories
