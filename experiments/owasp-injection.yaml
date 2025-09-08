@@ -1,0 +1,45 @@
+experiments:
+  - metadata:
+      name: owasp-a03-k8s-api
+      type: owasp-injection
+      namespace: default
+    parameters:
+      injectionType: "k8s-api"
+      injectionVector: "../../../etc/passwd"
+      targetResource: "configmap"
+
+  - metadata:
+      name: owasp-a03-ingress
+      type: owasp-injection
+      namespace: default
+    parameters:
+      injectionType: "ingress-annotation"
+      injectionVector: "$(cat /etc/passwd)"
+      targetResource: "ingress"
+
+  - metadata:
+      name: owasp-a03-service
+      type: owasp-injection
+      namespace: default
+    parameters:
+      injectionType: "service-selector"
+      injectionVector: "../kube-system/secrets"
+      targetResource: "service"
+
+  - metadata:
+      name: owasp-a03-rbac
+      type: owasp-injection
+      namespace: default
+    parameters:
+      injectionType: "rbac-name"
+      injectionVector: "../../admin-role"
+      targetResource: "role"
+
+  - metadata:
+      name: owasp-a03-configmap
+      type: owasp-injection
+      namespace: default
+    parameters:
+      injectionType: "configmap-key"
+      injectionVector: "../../../proc/self/environ"
+      targetResource: "configmap"

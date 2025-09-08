@@ -12,6 +12,9 @@ var ExperimentsRegistry = []Experiment{
 	&LLMDataLeakageExperiment{},
 	&LLMDataPoisoningExperiment{},
 	&KubeExec{},
+	&ConfigMapInjectionExperiment{},
+	&OWASPBrokenAccessControlExperiment{},
+	&OWASPInjectionExperiment{},
 }
 
 func ListExperiments() map[string]string {

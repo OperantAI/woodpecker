@@ -1,0 +1,12 @@
+experiments:
+  - metadata:
+      name: owasp-a01-broken-access
+      type: owasp-broken-access-control
+      namespace: default
+    parameters:
+      testType: "rbac-bypass"
+      targetNamespace: "kube-system"
+      accessAttempts:
+        - "list-secrets"
+        - "read-configmaps"
+        - "exec-pods"
