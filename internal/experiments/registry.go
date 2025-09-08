@@ -14,6 +14,7 @@ var ExperimentsRegistry = []Experiment{
 	&KubeExec{},
 	&ConfigMapInjectionExperiment{},
 	&OWASPBrokenAccessControlExperiment{},
+	&OWASPInjectionExperiment{},
 }
 
 func ListExperiments() map[string]string {
