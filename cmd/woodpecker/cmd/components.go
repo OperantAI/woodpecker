@@ -9,6 +9,7 @@ import (
 
 	"github.com/operantai/woodpecker/internal/components"
 	"github.com/operantai/woodpecker/internal/output"
+	"github.com/operantai/woodpecker/internal/postman"
 	"github.com/operantai/woodpecker/internal/snippets"
 	"github.com/spf13/cobra"
 )
@@ -80,11 +81,26 @@ var uninstallComponentCmd = &cobra.Command{
 	},
 }
 
+var postmanComponentCmd = &cobra.Command{
+	Use:   "postman",
+	Short: "Manage Postman collections",
+	Long:  "Manage Postman collections as components",
+	Run: func(cmd *cobra.Command, args []string) {
+		output.WriteInfo("Postman component management is on the process!")
+		collectionPath, error := cmd.Flags().GetString("collection")
+		if error != nil {
+			output.WriteError("Error reading collection flag: %v", error)
+		}
+		postman.RunCollection(collectionPath)
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(componentCmd)
 	componentCmd.AddCommand(installComponentCmd)
 	componentCmd.AddCommand(uninstallComponentCmd)
 	componentCmd.AddCommand(snippetComponentCmd)
+	componentCmd.AddCommand(postmanComponentCmd)
 
 	// Define the path of the experiment file to run
 	installComponentCmd.Flags().StringSliceP("files", "f", []string{}, "Component files to install")
@@ -95,4 +111,7 @@ func init() {
 
 	snippetComponentCmd.Flags().StringP("component", "c", "", "Component to generate a template of")
 	_ = snippetComponentCmd.MarkFlagRequired("component")
+
+	postmanComponentCmd.Flags().StringP("collection", "c", "", "Path to the Postman collection JSON file")
+	_ = postmanComponentCmd.MarkFlagRequired("collection")
 }

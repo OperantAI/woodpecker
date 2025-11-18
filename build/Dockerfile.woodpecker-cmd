@@ -1,0 +1,22 @@
+FROM golang:1.24-alpine AS builder
+
+ARG TARGETOS=linux
+ARG TARGETARCH=amd64
+
+COPY ./go.mod ./go.sum /woodpecker/
+WORKDIR /woodpecker/
+RUN go mod download && go mod verify
+
+COPY . .
+
+RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -ldflags="-w -s" -v -o bin/woodpecker ./cmd/woodpecker
+
+FROM gcr.io/distroless/base-debian11 AS build-release-stage
+
+USER nonroot:nonroot
+
+WORKDIR /woodpecker/
+
+COPY --from=builder /woodpecker/bin/woodpecker /usr/bin/woodpecker
+
+ENTRYPOINT ["woodpecker"]
