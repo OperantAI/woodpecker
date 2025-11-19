@@ -93,7 +93,7 @@ Experiments that need a component will warn you if it's not deployed when trying
 
 Please read the contribution guidelines, [here][contributing-url].
 
-## License 
+## License
 
 Distributed under the [Apache License 2.0][license-url].
 

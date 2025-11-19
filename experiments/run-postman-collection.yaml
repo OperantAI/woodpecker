@@ -1,0 +1,70 @@
+experiments:
+  - metadata:
+      name: run-postman-collection
+      type: postman-collection
+      namespace: woodpecker
+    parameters:
+      image: "ghcr.io/operantai/woodpecker/woodpecker-postman-collection:latest"
+      imagePullSecret: "my-private-registry" # Optional, if your image is in a private registry. Needs to be created in the namespace beforehand.
+      collectionPath: "/postman/postman-collection.yaml" # Path inside the container, default mounted at /postman and the file name is postman-collection.yaml
+      schedule: "*/30 * * * *" # Cronjob every 30 minutes
+      env:
+        # The envKeys will be the names of the environment variables inside the container
+        # and will be interpolated inside the Postman collection using {{envKey}} syntax
+        - envKey: your-token # Dashes will be converted to underscores for env var names
+          envValue: "fake_tokenasdjf90wj4ef90jas90djf90a" # It will be stored in a Kubernetes Secret
+          envType: secret
+        - envKey: your-url
+          envValue: https://example.com/api
+          envType: default
+      collection: | # Postman collection JSON content tested using schema "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+        {
+          "info": {
+              "name": "My Collection",
+              "version": "v2.1.0",
+              "description": "This is a demo collection.",
+              "schema": "https://schema.getpostman.com/json/collection/v2.1.0/"
+          },
+          "variable": [
+            {
+              "key": "your_token",
+              "value": "",
+              "type": "default"
+            },
+            {
+              "key": "your_variable",
+              "value": "POC Team",
+              "type": "default"
+            }
+          ],
+          "item": [
+            {
+              "id": "my-first-item",
+              "name": "My First Item",
+              "description": "This is an Item that contains a single HTTP GET request. It doesn't really do much yet!",
+              "request": {
+                "description": "This is a sample POST request",
+                "url": "https://echo.getpostman.com/post",
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Host",
+                    "value": "echo.getpostman.com"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{your_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"service\": \"api.openai.com\", \"{{your_variable}}\"\n}"
+                }
+              }
+            }
+          ]
+        }

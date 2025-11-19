@@ -11,6 +11,7 @@ import (
 	"github.com/docker/docker/api/types/container"
 	dockerClient "github.com/docker/docker/client"
 	"github.com/operantai/woodpecker/internal/k8s"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -151,4 +152,27 @@ func getAIComponentAddrs(ctx context.Context, config *ExperimentConfig) (string,
 		verifierPort = int(verifierForwardedPort.Local)
 	}
 	return fmt.Sprintf("%s:%d", verifierAddr, verifierPort), fmt.Sprintf("%s:%d", aiAppAddr, aiAppPort), nil
+}
+
+func CreateSecretsFromEnvVars(experimentName string, envVars []EnvVar) map[string]*corev1.Secret {
+	var secrets map[string]*corev1.Secret = make(map[string]*corev1.Secret)
+	for _, env := range envVars {
+		if env.EnvType == "secret" {
+			secretName := strings.ReplaceAll(env.EnvKey, "_", "-")
+			secret := &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: secretName,
+					Labels: map[string]string{
+						"experiment": experimentName,
+					},
+				},
+				Data: map[string][]byte{
+					env.EnvKey: []byte(env.EnvValue),
+				},
+				Type: corev1.SecretTypeOpaque,
+			}
+			secrets[env.EnvKey] = secret
+		}
+	}
+	return secrets
 }
