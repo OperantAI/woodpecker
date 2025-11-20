@@ -11,7 +11,7 @@ COPY . .
 
 RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -ldflags="-w -s" -v -o bin/woodpecker-postman-collection ./cmd/woodpecker-postman-collection
 
-FROM gcr.io/distroless/base-debian11 AS build-release-stage
+FROM gcr.io/distroless/base-debian12 AS build-release-stage
 
 USER nonroot:nonroot
 
