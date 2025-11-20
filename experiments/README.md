@@ -9,7 +9,7 @@ experiments:
       type: prvileged-container # The type of experiment, see table below for a list of valid types
       namespace: my-namespace # What namespace to apply the experiment to
     parameters: # Parameters holds the settings for your experiment, tweak them to suit your needs.
-        hostPid: true 
+        hostPid: true
 ```
 
 
@@ -107,5 +107,5 @@ Finally, add your Experiment to the Experiment registry in [internal/experiments
 Now you're set to cause some chaos! 🎉
 
 ``` go
-woodpecker run -f experiments/my-experiment.yaml
+woodpecker experiment run -f experiments/my-experiment.yaml
 ```

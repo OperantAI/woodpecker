@@ -16,7 +16,7 @@ RUN go build \
 
 EXPOSE 4000
 
-FROM gcr.io/distroless/base-debian11
+FROM gcr.io/distroless/base-debian12
 COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=build /app/bin/* /app/bin/
 CMD ["/app/bin/woodpecker-executor-server"]

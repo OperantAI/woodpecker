@@ -1,0 +1,6 @@
+**/*.md
+**/.gitignore
+aws-genai-hackathon/**
+build/**
+**/*.json
+.github/**

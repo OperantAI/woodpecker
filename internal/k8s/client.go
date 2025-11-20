@@ -5,8 +5,10 @@ package k8s
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 
+	"github.com/operantai/woodpecker/internal/output"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -19,11 +21,8 @@ type Client struct {
 }
 
 func NewClient() (*Client, error) {
-	// Create a Kubernetes Client
-	var kubeconfig string
-	if home := homedir.HomeDir(); home != "" {
-		kubeconfig = filepath.Join(home, ".kube", "config")
-	}
+	kubeconfig := getKubeConfigPath()
+
 	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create Kubernetes Client: %w", err)
@@ -38,6 +37,27 @@ func NewClient() (*Client, error) {
 		Clientset:  clientset,
 		RestConfig: config,
 	}, nil
+}
+
+// getKubeConfigPath returns the path to the kubeconfig file by checking the KUBECONFIG
+// environment variable or defaulting to ~/.kube/config
+func getKubeConfigPath() string {
+	// Create a Kubernetes Client
+	var kubeconfig string
+	kubeconfig, _ = os.LookupEnv("KUBECONFIG")
+	if kubeconfig != "" {
+		return kubeconfig
+	}
+	if home := homedir.HomeDir(); home != "" {
+		// check if ~/.kube/config file exists
+		_, error := os.Stat(filepath.Join(home, ".kube", "config"))
+		if os.IsNotExist(error) {
+			output.WriteError("~/.kube/config file does not exist")
+		} else {
+			kubeconfig = filepath.Join(home, ".kube", "config")
+		}
+	}
+	return kubeconfig
 }
 
 func NewClientInContainer() (*Client, error) {
