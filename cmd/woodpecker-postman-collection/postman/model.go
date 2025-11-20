@@ -85,12 +85,22 @@ type PostmanRequestBody struct {
 	Form map[string]any `json:"formdata"`
 }
 
-// PostProcessing interface for processing Postman collections
-type PostProcessing interface {
-	// Generic method to process the Postman collection
-	PostProcess(collection *PostmanCollection) error
+// PostmanProcessing defines the interface for processing Postman collections
+type PostmanProcessing interface {
+	// Generic method to post-process the Postman collection
+	PostProcess(collection *PostmanCollection, postProcessor PostProcessor) error
+}
+
+// PostProcessor defines the interface for post-processing tasks
+// such as variable interpolation and sending HTTP requests.
+type PostProcessor interface {
 	// Method to interpolate postman variables in strings
-	interpolate(input *string, variables map[string]string) error
+	Interpolate(input *string, variables map[string]string) error
 	// Method to send HTTP requests based on PostmanRequest
-	sendRequest(variableMaps map[string]string, request PostmanRequest, client HTTPClient) error
+	SendRequest(variableMaps map[string]string, request PostmanRequest, client HTTPClient) error
+}
+
+// PostmanParser defines the interface for parsing Postman collections
+type PostmanParser interface {
+	Parse(jsonCollectionPath string) (*PostmanCollection, error)
 }

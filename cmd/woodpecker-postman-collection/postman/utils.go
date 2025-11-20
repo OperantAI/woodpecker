@@ -1,15 +1,14 @@
 package postman
 
-// HumanStatusCode converts an HTTP status code to a human-readable string.
-func HumanStatusCode(statusCodeStr int) string {
+import "github.com/operantai/woodpecker/internal/output"
+
+// checkStatusCode provides human-readable output based on HTTP status codes.
+func checkStatusCode(statusCodeStr int) {
 	switch {
-	case statusCodeStr >= 200 && statusCodeStr < 300:
-		return "SUCCESS"
 	case statusCodeStr >= 400 && statusCodeStr < 500:
-		return "CLIENT_ERROR"
+		output.WriteError("client error occurred: %d", statusCodeStr)
 	case statusCodeStr >= 500:
-		return "SERVER_ERROR"
+		output.WriteError("server error occurred: %d", statusCodeStr)
 	default:
-		return "OTHER"
 	}
 }

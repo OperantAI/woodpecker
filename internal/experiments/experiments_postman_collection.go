@@ -97,9 +97,6 @@ func (p *PostmanCollectionExperimentConfig) Run(ctx context.Context, experimentC
 		return err
 	}
 
-	if err != nil {
-		return err
-	}
 	configMap := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      config.Metadata.Name + "-config",
@@ -239,9 +236,9 @@ func (p *PostmanCollectionExperimentConfig) Verify(ctx context.Context, experime
 	for _, cj := range cronjobs.Items {
 		if cj.Name == config.Metadata.Name {
 			v.Success(config.Metadata.Type)
-		} else {
-			v.Fail(config.Metadata.Type)
+			break
 		}
+		v.Fail(config.Metadata.Type)
 	}
 
 	return v.GetOutcome(), nil
