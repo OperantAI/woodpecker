@@ -4,7 +4,7 @@ experiments:
       type: postman-collection
       namespace: woodpecker
     parameters:
-      image: "ghcr.io/operantai/woodpecker/woodpecker-postman-collection:latest"
+      image: "ghcr.io/operantai/woodpecker/woodpecker-postman-collection:main"
       imagePullSecret: "my-private-registry" # Optional, if your image is in a private registry. Needs to be created in the namespace beforehand.
       collectionPath: "/postman/postman-collection.yaml" # Path inside the container, default mounted at /postman and the file name is postman-collection.yaml
       schedule: "*/30 * * * *" # Cronjob every 30 minutes

@@ -264,7 +264,7 @@ func (p *PostmanCollectionExperimentConfig) Cleanup(ctx context.Context, experim
 
 	for _, env := range config.Parameters.Env {
 		if env.EnvType == "secret" {
-			err = clientset.CoreV1().Secrets(config.Metadata.Namespace).Delete(ctx, env.EnvKey, metav1.DeleteOptions{})
+			err = clientset.CoreV1().Secrets(config.Metadata.Namespace).Delete(ctx, strings.ReplaceAll(env.EnvKey, "_", "-"), metav1.DeleteOptions{})
 			if err != nil {
 				return err
 			}
