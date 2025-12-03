@@ -17,6 +17,59 @@ build-woodpecker-ai-verifier: ## Build woodpecker AI verifier container
 build-woodpecker-ai-app: ## Build woodpecker AI app container
 	@docker build -f build/Dockerfile.woodpecker-ai-app .
 
+# ==================================================================================== #
+# QUALITY
+# ==================================================================================== #
+
+## tidy: format code and tidy modfile
+.PHONY: tidy
+tidy:
+	@go install mvdan.cc/gofumpt@latest
+	@go fmt ./...
+	@go mod tidy -v
+
+.PHONY: lint-full
+lint-full: generate lint-extras
+	@go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
+	@golangci-lint run --timeout 1h
+
+lint-extras: lint-check-focused-tests lint-check-wrap-in-logs lint-check-vulns
+
+lint-check-focused-tests:
+	@(\
+         (\
+             grep -r "FDescribe(" pkg || \
+             grep -r "FIt(" pkg || \
+             grep -r "FContext(" pkg || \
+             grep -r "FEntry(" pkg || \
+             grep -r "FWhen(" pkg \
+         ) || \
+         ( \
+             grep -r "FDescribe(" internal || \
+             grep -r "FIt(" internal || \
+             grep -r "FContext(" internal || \
+             grep -r "FEntry(" internal || \
+             grep -r "FWhen(" internal \
+         ) \
+     ) && \
+	  echo "Focused tests detected, remove them" && exit 1 || true
+
+lint-check-wrap-in-logs:
+	@(\
+		grep -r log pkg | grep -v "fmt.Errorf" | grep "%w" \
+		) && \
+		echo "Do not use %w in logs for errors, use %s instead" && exit 1 || true
+
+lint-check-vulns:
+	@go install golang.org/x/vuln/cmd/govulncheck@latest
+	@govulncheck -show verbose ./...
+
+generate: clean
+	@go generate -x ./...
+
+clean:
+	find . -name *.coverprofile | xargs rm -fr
+
 .PHONY: fmt
 fmt: ## Run go fmt
 	@go fmt ./...
@@ -27,11 +80,16 @@ vet: ## Run go vet
 
 .PHONY: lint
 lint: ## Run linter
-	@golangci-lint run
+	@golangci-lint run --timeout 1h
 
 .PHONY: test
-test: ## Run tests
-	@go test -cover -v ./...
+test:
+	@go test -v -race -buildvcs ./...
+
+.PHONY: test/cover
+test/cover:
+	@go test -v -race -buildvcs -coverprofile=/tmp/coverage.out ./...
+	@go tool cover -html=/tmp/coverage.out
 
 .PHONY: help
 help: ## Display this help
