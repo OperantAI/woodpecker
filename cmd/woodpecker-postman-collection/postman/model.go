@@ -1,6 +1,7 @@
 package postman
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 )
@@ -63,12 +64,13 @@ type Variable struct {
 
 type PostmanItem struct {
 	Name    string         `json:"name"`
-	Request PostmanRequest `json:"request"`
+	Request PostmanRequest `json:"request,omitempty"`
+	Items   []PostmanItem  `json:"item,omitempty"` // allows recursive n items = multiple nested dirs
 }
 
 type PostmanRequest struct {
 	Method      string             `json:"method"`
-	Url         string             `json:"url"`
+	URL         URL                `json:"url"`
 	Header      []PostmanHeader    `json:"header"`
 	Body        PostmanRequestBody `json:"body"`
 	Description string             `json:"description"`
@@ -85,10 +87,75 @@ type PostmanRequestBody struct {
 	Form map[string]any `json:"formdata"`
 }
 
+type URLObject struct {
+	Raw      string          `json:"raw,omitempty"`
+	Protocol string          `json:"protocol,omitempty"`
+	Host     URLHost         `json:"host,omitempty"`
+	Path     URLPath         `json:"path,omitempty"`
+	Port     string          `json:"port,omitempty"`
+	Query    []URLQueryParam `json:"query,omitempty"`
+	Hash     string          `json:"hash,omitempty"`
+	Variable []URLVariable   `json:"variable,omitempty"`
+}
+
+type URLHost []string
+
+type URLPath []any // strings or objects with {type, value}
+
+type URLQueryParam struct {
+	Key         *string `json:"key,omitempty"`
+	Value       *string `json:"value,omitempty"`
+	Disabled    bool    `json:"disabled,omitempty"`
+	Description string  `json:"description,omitempty"`
+}
+
+type URLVariable struct {
+	ID    string `json:"id,omitempty"`
+	Value string `json:"value,omitempty"`
+}
+
+type URL struct {
+	IsString bool       // if the field was a string
+	String   string     // the raw string form
+	Object   *URLObject // parsed object form
+}
+
+func (u URL) GetRaw() *string {
+	if u.IsString {
+		return &u.String
+	}
+	if u.Object != nil {
+		return &u.Object.Raw
+	}
+	return nil
+}
+
+// Custom polimorphic parsing of URL
+func (u *URL) UnmarshalJSON(data []byte) error {
+	// First: check if it's a JSON string
+	var s string
+	if err := json.Unmarshal(data, &s); err == nil {
+		u.IsString = true
+		u.String = s
+		u.Object = nil
+		return nil
+	}
+
+	// Otherwise: it's an object
+	var obj URLObject
+	if err := json.Unmarshal(data, &obj); err == nil {
+		u.IsString = false
+		u.Object = &obj
+		return nil
+	}
+
+	return fmt.Errorf("url must be string or object, got: %s", string(data))
+}
+
 // PostmanProcessing defines the interface for processing Postman collections
 type PostmanProcessing interface {
 	// Generic method to post-process the Postman collection
-	PostProcess(collection *PostmanCollection, postProcessor PostProcessor) error
+	PostProcess(client HTTPClient, collection *PostmanCollection, postProcessor PostProcessor) error
 }
 
 // PostProcessor defines the interface for post-processing tasks

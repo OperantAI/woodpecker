@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"reflect"
 	"regexp"
 	"strings"
 
@@ -43,21 +44,37 @@ func NewPostmanProcessing() PostmanProcessing {
 }
 
 // Implementation of PostProcess method that post-processes the Postman collection
-func (p *postmanProcessing) PostProcess(collection *PostmanCollection, postProcessor PostProcessor) error {
+func (p *postmanProcessing) PostProcess(client HTTPClient, collection *PostmanCollection, postProcessor PostProcessor) error {
 	// Processing each item in the collection
 	// First we interpolate the URL and body payloads with the necessary variables
 	// Then we send the HTTP request using the BaseHTTPClient singleton
-	client := GetHTTPClient()
-	for _, item := range collection.Items {
+	err := processItems(client, collection.Items, collection, postProcessor)
+
+	return err
+}
+
+// processItems will process recursively all nested items of a postman collection and send their request
+func processItems(client HTTPClient, postmanItems []PostmanItem, collection *PostmanCollection, postProcessor PostProcessor) error {
+	for _, item := range postmanItems {
 		output.WriteInfo("processing item: %s", item.Name)
-		if err := postProcessor.Interpolate(&item.Request.Url, collection.GetVariableMap()); err != nil {
-			return fmt.Errorf("error interpolating URL %s: %v", item.Request.Url, err)
+
+		if len(item.Items) > 0 {
+			// Recursive call to nested items for processing
+			if err := processItems(client, item.Items, collection, postProcessor); err != nil {
+				return err
+			}
 		}
-		if err := postProcessor.Interpolate(&item.Request.Body.Raw, collection.GetVariableMap()); err != nil {
-			return fmt.Errorf("error interpolating Body payload: %v", err)
-		}
-		if err := postProcessor.SendRequest(collection.GetVariableMap(), item.Request, client); err != nil {
-			return fmt.Errorf("error sending request for item %s: %v", item.Name, err)
+		// Check if current item has request objects to be run
+		if !reflect.DeepEqual(item.Request, PostmanRequest{}) {
+			if err := postProcessor.Interpolate(item.Request.URL.GetRaw(), collection.GetVariableMap()); err != nil {
+				return fmt.Errorf("error interpolating URL %s: %v", *item.Request.URL.GetRaw(), err)
+			}
+			if err := postProcessor.Interpolate(&item.Request.Body.Raw, collection.GetVariableMap()); err != nil {
+				return fmt.Errorf("error interpolating Body payload: %v", err)
+			}
+			if err := postProcessor.SendRequest(collection.GetVariableMap(), item.Request, client); err != nil {
+				return fmt.Errorf("error sending request for item %s: %v", item.Name, err)
+			}
 		}
 	}
 	return nil
@@ -87,7 +104,7 @@ func (p *postProcessing) Interpolate(input *string, variables map[string]string)
 
 // Implementation of sending HTTP request based on PostmanRequest
 func (p *postProcessing) SendRequest(variableMaps map[string]string, request PostmanRequest, client HTTPClient) error {
-	req, err := http.NewRequest(request.Method, request.Url, bytes.NewBuffer([]byte(request.Body.Raw)))
+	req, err := http.NewRequest(request.Method, *request.URL.GetRaw(), bytes.NewBuffer([]byte(request.Body.Raw)))
 	if err != nil {
 		return fmt.Errorf("error creating HTTP request: %v", err)
 	}
@@ -108,7 +125,7 @@ func (p *postProcessing) SendRequest(variableMaps map[string]string, request Pos
 		return fmt.Errorf("error reading response body: %v", err)
 	}
 	checkStatusCode(resp.StatusCode)
-	output.WriteInfo("Method: %s, URL: %s,\n Response: %s\n", request.Method, request.Url, string(body))
+	output.WriteInfo("Method: %s, URL: %s,\n Response: %s\n", request.Method, *request.URL.GetRaw(), string(body))
 
 	return nil
 }
@@ -122,10 +139,11 @@ func RunCollection(collectionPath string) {
 		output.WriteError("error parsing collection: %v", err)
 		return
 	}
+	client := NewBaseHTTPClient()
 
 	postmanProcessing := NewPostmanProcessing()
 	postProcessing := NewPostProcessing()
-	if err := postmanProcessing.PostProcess(collection, postProcessing); err != nil {
+	if err := postmanProcessing.PostProcess(client, collection, postProcessing); err != nil {
 		output.WriteError("error during post-processing: %v", err)
 		return
 	}

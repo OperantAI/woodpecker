@@ -1,0 +1,297 @@
+{
+	"info": {
+		"_postman_id": "1234567890_",
+		"name": "Postman Test Collection",
+		"description": "Expanded Postman collection description",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "0123456",
+		"_collection_link": "https://test.postman.co/workspace/test"
+	},
+	"item": [
+		{
+			"name": "Example Header 1",
+			"item": [
+				{
+					"name": "Example Children 1",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{bearer_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"service\": \"POC\", \"payload\": \"ping\"\n}"
+						},
+						"url": {
+							"raw": "{{test_url}}/endpoint/another",
+							"host": [
+								"{{test_url}}"
+							],
+							"path": [
+								"analyze"
+							]
+						},
+						"description": "Baseline connectivity check"
+					},
+					"response": []
+				},
+				{
+					"name": "Example Children 2",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{bearer_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"service\": \"POC\", \"payload\": \"ping\", \"team_name\": \"{{team_name}}\"\n}"
+						},
+						"url": {
+							"raw": "{{test_url}}/endpoint",
+							"host": [
+								"{{test_url}}"
+							],
+							"path": [
+								"analyze"
+							]
+						},
+						"description": "OWASP A06: Prompt Injection"
+					},
+					"response": []
+				},
+				{
+					"name": "Example Children 3",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{bearer_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"service\": \"POC\", \"payload\": \"ping\", \"team_name\": \"{{team_name}}\"\n}"
+						},
+						"url": {
+							"raw": "{{test_url}}/endpoint",
+							"host": [
+								"{{test_url}}"
+							],
+							"path": [
+								"analyze"
+							]
+						},
+						"description": "Path traversal (OWASP A01)"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Example Header 2",
+			"item": [
+				{
+					"name": "Example Children 1",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{bearer_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"service\": \"POC\", \"payload\": \"ping\", \"team_name\": \"{{team_name}}\"\n}"
+						},
+						"url": {
+							"raw": "{{test_url}}/endpoint/other",
+							"host": [
+								"{{test_url}}"
+							],
+							"path": [
+								"analyze"
+							]
+						},
+						"description": "Analyze - SSN Detection"
+					},
+					"response": []
+				},
+				{
+					"name": "Example Children 2",
+					"item": [
+						{
+							"name": "Example Grand Children 1",
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{bearer_token}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"service\": \"POC\", \"payload\": \"ping\", \"team_name\": \"{{team_name}}\"\n}"
+								},
+								"url": {
+									"raw": "{{test_url}}/endpoint",
+									"host": [
+										"{{test_url}}"
+									],
+									"path": [
+										"analyze"
+									]
+								},
+								"description": "Healthcare PHI"
+							},
+							"response": []
+						},
+						{
+							"name": "Example Grand Children 2",
+							"item": [
+								{
+									"name": "Example Grand Grand Children 1",
+									"request": {
+										"method": "PUT",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "Authorization",
+												"value": "Bearer {{bearer_token}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"service\": \"POC\", \"payload\": \"ping\", \"team_name\": \"{{team_name}}\"\n}"
+										},
+										"url": {
+											"raw": "{{test_url}}/endpoint",
+											"host": [
+												"{{test_url}}"
+											],
+											"path": [
+												"analyze"
+											]
+										},
+										"description": "PII exposure"
+									},
+									"response": []
+								},
+								{
+									"name": "Example Grand Grand Children 2",
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "Authorization",
+												"value": "Bearer {{bearer_token}}"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"service\": \"POC\", \"payload\": \"ping\", \"team_name\": \"{{team_name}}\"\n}"
+										},
+										"url": {
+											"raw": "{{test_url}}/endpoint",
+											"host": [
+												"{{test_url}}"
+											],
+											"path": [
+												"analyze"
+											]
+										},
+										"description": "Configuration leak"
+									},
+									"response": []
+								}
+							]
+						},
+						{
+							"name": "Example Grand Children 3",
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{bearer_token}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"service\": \"POC\", \"payload\": \"ping\", \"team_name\": \"{{team_name}}\"\n}"
+								},
+								"url": {
+									"raw": "{{test_url}}/endpoint",
+									"host": [
+										"{{test_url}}"
+									],
+									"path": [
+										"analyze"
+									]
+								},
+								"description": "Financial data leakage"
+							},
+							"response": []
+						}
+					]
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "test_url",
+			"value": "http://test.postman.com",
+			"type": "default"
+		},
+		{
+			"key": "bearer_token",
+			"value": "token-123456",
+			"type": "secret"
+		},
+		{
+			"key": "team_name",
+			"value": "POC Team",
+			"type": "default"
+		}
+	]
+}
