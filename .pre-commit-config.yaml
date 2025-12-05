@@ -1,0 +1,15 @@
+repos:
+  - repo: local
+    hooks:
+      - id: go-fmt
+        name: Go format
+        description: Perform GO formatting and vuln checks
+        entry: bash -c 'make lint-full'
+        language: system
+        stages: ["pre-commit", "pre-push"]
+      - id: go-test
+        name: Go test
+        description: Perform GO tests
+        entry: bash -c 'make test'
+        language: system
+        stages: ["pre-commit", "pre-push"]
