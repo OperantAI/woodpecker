@@ -6,3 +6,4 @@ tmp/
 
 dist/
 .vscode/
+**/.env

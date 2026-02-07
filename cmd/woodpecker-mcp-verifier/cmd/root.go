@@ -2,24 +2,26 @@ package cmd
 
 import (
 	"context"
+	"strings"
 
 	mcpverifier "github.com/operantai/woodpecker/cmd/woodpecker-mcp-verifier/mcp-verifier"
 	"github.com/operantai/woodpecker/cmd/woodpecker-mcp-verifier/utils"
 	"github.com/operantai/woodpecker/internal/output"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // rootCmd represents the base command when called without any subcommands
 var (
-
 	rootCmd = &cobra.Command{
 		Use:   "mcp-verifier",
 		Short: "Run a MCP client verifier as a Woodpecker components",
 		Long:  "Run a MCP client verifier as a Woodpecker components",
 	}
 	protocol utils.MCMCPprotocol
-	cmdArgs []string
+	cmdArgs  []string
 )
+
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
@@ -36,21 +38,38 @@ var runCmd = &cobra.Command{
 	Long:  "Run a MCP client verifier as a Woodpecker component",
 	Run: func(cmd *cobra.Command, args []string) {
 		output.WriteInfo("MCP client verifying starting ...")
-		serverUrl, error := cmd.Flags().GetString("url")
-		if error != nil {
-			output.WriteError("Error reading collection flag: %v", error)
-		}
+		var serverURL, payloadPath string
+		var err error
 
-		if err := mcpverifier.RunClient(context.Background(), serverUrl, protocol, &cmdArgs); err != nil { panic(err) }
+		if serverURL, err = cmd.Flags().GetString("url"); err != nil {
+			output.WriteFatal("%v", err)
+		}
+		payloadPath = viper.GetString("payload-path")
+
+		if err := mcpverifier.RunClient(context.Background(), serverURL, protocol, &cmdArgs, payloadPath); err != nil {
+			output.WriteFatal("%v", err)
+		}
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(runCmd)
+	// Tells Viper to use this prefix when reading environment variables
+	viper.SetEnvPrefix("woodpecker")
+	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
+	viper.AutomaticEnv()
 
 	runCmd.Flags().StringP("url", "u", "", "The MCP server url")
 	runCmd.Flags().VarP(&protocol, "protocol", "p", "The MCP protocol being used")
+	runCmd.Flags().StringP("payload-path", "t", "/app/payload.json", "The path to the json payload content")
 	runCmd.Flags().StringSliceP("cmd_args", "c", cmdArgs, `If STDIO protocol, a comma separated list of cmd and args. i.e -c "uv,run,server"`)
-	if err := runCmd.MarkFlagRequired("url"); err != nil { panic(err) }
-	if err := runCmd.MarkFlagRequired("protocol"); err != nil { panic(err) }
+	if err := runCmd.MarkFlagRequired("url"); err != nil {
+		output.WriteFatal("%v", err)
+	}
+	if err := runCmd.MarkFlagRequired("protocol"); err != nil {
+		output.WriteFatal("%v", err)
+	}
+	if err := viper.BindPFlag("payload-path", runCmd.Flags().Lookup("payload-path")); err != nil {
+		output.WriteFatal("%v", err)
+	}
 }

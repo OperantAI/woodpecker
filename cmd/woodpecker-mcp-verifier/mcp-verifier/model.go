@@ -1,14 +1,17 @@
+// mcpverifier ...
+
 package mcpverifier
 
 import (
+	"context"
 	"net/http"
 	"sync"
 	"time"
+
+	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"github.com/operantai/woodpecker/internal/output"
+	"golang.org/x/oauth2"
 )
-
-type MCPClient interface {
-
-}
 
 var (
 	httpClient *http.Client
@@ -16,56 +19,78 @@ var (
 )
 
 type HeaderTransport struct {
-	Base http.RoundTripper
+	Base          http.RoundTripper
 	CustomHeaders map[string]string
 }
 
 func (t *HeaderTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	// Loop over the custom headers and set them
 	for key, val := range t.CustomHeaders {
-		req.Header.Add(key,val)
+		req.Header.Add(key, val)
 	}
 	return t.Base.RoundTrip(req)
 }
 
-// Base HTTP client interface
-type HTTPClient interface {
-	Do(req *http.Request) (*http.Response, error)
-}
-
-// Base HTTP client implementation
-type BaseHTTPClient struct{}
-
-func (c *BaseHTTPClient) Do(req *http.Request) (*http.Response, error) {
-	client := GetHTTPClient()
-	return client.Do(req)
-}
-
-func NewBaseHTTPClient() HTTPClient {
-	return &BaseHTTPClient{}
-}
-
 // GetHTTPClient returns a singleton instance of http.Client.
-func GetHTTPClient() *http.Client {
+func GetHTTPClient(opts *HTTPTransportOptions) *http.Client {
+
 	once.Do(func() {
+		transport, err := NewHTTPTransport(oauthHandler, opts)
+		if err != nil {
+			output.WriteFatal("An error performing the Oauth flow happened: %v", err)
+		}
 		httpClient = &http.Client{
-			Timeout: 30 * time.Second, // Example timeout
-			Transport: &HeaderTransport{
-				Base: &http.Transport{
-					MaxIdleConns:        100,              // Max idle connections
-					IdleConnTimeout:     90 * time.Second, // Idle connection timeout
-					TLSHandshakeTimeout: 10 * time.Second,
-				},
-				CustomHeaders: map[string]string{
-					"o-mcp-client-name":"woodpecker-mcp-client",
-				},
-			},
+			Timeout:   30 * time.Second,
+			Transport: transport,
 		}
 	})
 	return httpClient
 }
 
+type MCPConfig struct {
+	Config MCPConfigConnection `json:"config"`
+}
 
-type MaliciousPayload struct{
-	Payload string `json:"payload"`
+type MCPConfigConnection struct {
+	CustomHeaders map[string]string `json:"customHeaders"`
+	Payloads      []PayloadContent  `json:"payloads"`
+}
+
+type PayloadContent struct {
+	Content string   `json:"content"`
+	Tags    []string `json:"tags"`
+}
+
+type IMCPClient interface {
+	// Calls an MCP tool with a set of crafted payloads if it has any string input in its inputschema
+	ToolCallWithPayload(ctx context.Context, cs IMCPClientSession, tool mcp.Tool, mPayload PayloadContent) error
+	// Gets a MCP config from a json file
+	GetMCPConfig(jsonPayloadPath string) (*MCPConfig, error)
+}
+
+type mcpClient struct{}
+
+func NewMCPClient() IMCPClient {
+	return &mcpClient{}
+}
+
+type IMCPClientSession interface {
+	// CallTool calls the tool with the given parameters.
+	//
+	// The params.Arguments can be any value that marshals into a JSON object.
+	CallTool(ctx context.Context, params *mcp.CallToolParams) (*mcp.CallToolResult, error)
+}
+
+// IOauthFlow implement the oauth flow basic methods
+type IOauthFlow interface {
+	ExtractResourceMetadata(authHeader string) (string, error)
+	FetchProtectedResource(metadataURL string) (*ProtectedResourceMetadata, error)
+	FetchAuthServerMetadata(authServerURL string) (*AuthServerMetadata, error)
+	GetOauthTokenSource(meta *AuthServerMetadata, clientID, redirectURI, scope string) (oauth2.TokenSource, error)
+}
+
+type OauthFlow struct{}
+
+func NewOauthFlow() IOauthFlow {
+	return &OauthFlow{}
 }
