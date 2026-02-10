@@ -1,9 +1,10 @@
+// Package mcpverifier defines the creation of an MCP client that will connect to an MCP server, discover their tools
+// and send a bulk of payload requests defined in a json config file.
 package mcpverifier
 
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -115,7 +116,7 @@ func getTransport(serverURL string, protocol utils.MCMCPprotocol, cmdArgs *[]str
 		opts = nil
 	}
 	switch protocol {
-	case utils.STREAMABLE_HTTP:
+	case utils.STREAMABLEHTTP:
 		output.WriteInfo("Setting streamabale-http transport connection.")
 		hClient := GetHTTPClient(opts)
 		transport := &mcp.StreamableClientTransport{
@@ -140,13 +141,12 @@ func getTransport(serverURL string, protocol utils.MCMCPprotocol, cmdArgs *[]str
 }
 
 func (m *mcpClient) ToolCallWithPayload(ctx context.Context, cs IMCPClientSession, tool mcp.Tool, mPayload PayloadContent) error {
-	field, exists := checkToolTypeParams(tool.InputSchema)
-	if !exists {
-		return errors.New("no input field found of type string in the input schema for the tool")
+
+	params, err := setParamsSchema(tool.InputSchema, mPayload)
+	if err != nil {
+		return err
 	}
-	params := map[string]any{
-		field: mPayload.Content,
-	}
+
 	result, err := cs.CallTool(ctx, &mcp.CallToolParams{
 		Name:      tool.Name,
 		Arguments: params,
@@ -163,34 +163,6 @@ func (m *mcpClient) ToolCallWithPayload(ctx context.Context, cs IMCPClientSessio
 		output.WriteInfo("Tool {%s}: %s, tags: %s", tool.Name, string(data), mPayload.Tags)
 	}
 	return nil
-}
-
-// Takes the inputSchema of each tool and parse it to find the first string
-// field. Returns the name of that field to be used to send the tool payload
-func checkToolTypeParams(inputSchema any) (field string, exists bool) {
-	// Assert the input is a map
-	schema, ok := inputSchema.(map[string]any)
-	if !ok {
-		return "", false
-	}
-
-	// Drill down into the "properties" field
-	properties, ok := schema["properties"].(map[string]any)
-	if !ok {
-		return "", false
-	}
-
-	// Loop over the fields and find a string type.
-	// We return the first input field of type string to send trhough it the
-	// tool payload
-	for field := range properties {
-		fieldType, ok := properties[field].(map[string]any)["type"].(string)
-		if fieldType == "string" {
-			return field, ok
-		}
-	}
-
-	return "", false
 }
 
 func (m *mcpClient) GetMCPConfig(jsonPayloadPath string) (*MCPConfig, error) {

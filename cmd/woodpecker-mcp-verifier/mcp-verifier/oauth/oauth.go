@@ -1,4 +1,4 @@
-// Oauth client implementation taken from https://github.com/modelcontextprotocol/go-sdk/blob/main/auth/client.go
+// Oauth client implementation based on https://github.com/modelcontextprotocol/go-sdk/blob/main/auth/client.go
 
 package oauth
 
@@ -29,7 +29,7 @@ import (
 	"golang.org/x/oauth2"
 )
 
-// IMPROVE_ME: Fix the correct implementation of the Oauth flow with optimized code
+// OauthHandler IMPROVE_ME: Find better ways to optimize the OauthHandler auth flow
 func OauthHandler(req *http.Request, res *http.Response) (oauth2.TokenSource, error) {
 
 	oauthFlow := NewOauthFlow()
@@ -259,6 +259,8 @@ func buildAuthURL(
 	return authEndpoint + "?" + q.Encode()
 }
 
+// waitForAuthCode spawns a temp web server with the oauth callback endpoint to receive the code
+// and state from the oauth provider.
 func waitForAuthCode(
 	ctx context.Context,
 	redirectURI string,
@@ -383,6 +385,7 @@ func openBrowser(url string) error {
 
 }
 
+// CheckCurrentToken checks if there is a creds file with an access token already provisioned for the current issuer url
 func (o *OauthManager) CheckCurrentToken(issuer string) (*TokenResponse, error) {
 
 	appName := viper.GetString("WOODPECKER_APP_NAME")
@@ -404,6 +407,7 @@ func (o *OauthManager) CheckCurrentToken(issuer string) (*TokenResponse, error) 
 	return &tokenSource, nil
 }
 
+// SaveCacheInfo saves in a creds file the access token retrieved from the oauth flow response
 func (o *OauthManager) SaveCacheInfo(issuer string, token *TokenResponse) error {
 
 	appName := viper.GetString("WOODPECKER_APP_NAME")
@@ -430,6 +434,7 @@ func (o *OauthManager) SaveCacheInfo(issuer string, token *TokenResponse) error 
 	return os.WriteFile(file, data, 000)
 }
 
+// checkExistingCacheConfig retrieves the creds.json struct with the issuer urls and tokens associated if any
 func checkExistingCacheConfig(filePath string) (MCPServerCacheConfig, error) {
 	var currentConfig MCPServerCacheConfig
 	data, err := os.ReadFile(filePath)
@@ -443,6 +448,8 @@ func checkExistingCacheConfig(filePath string) (MCPServerCacheConfig, error) {
 	return currentConfig, nil
 }
 
+// checkCredsPath based on the app name we search for a $HOME/.config/$WOODPECKER_APP_NAME/creds/creds.json file
+// if not present we created with a json struct that takes the Oauth issuer url as the id for that token
 func checkCredsPath(appName string) (configPath string, err error) {
 	dir, err := os.UserHomeDir()
 	if err != nil {

@@ -1,19 +1,21 @@
+// Package utils define a set of utility functions used across the project
 package utils
 
 import "errors"
+
 type MCMCPprotocol string
 
 const (
-	STDIO MCMCPprotocol = "stdio"
-	SSE MCMCPprotocol = "sse"
-	STREAMABLE_HTTP MCMCPprotocol = "streamable-http"
+	STDIO          MCMCPprotocol = "stdio"
+	SSE            MCMCPprotocol = "sse"
+	STREAMABLEHTTP MCMCPprotocol = "streamable-http"
 )
 
 func (m *MCMCPprotocol) String() string {
 	return string(*m)
 }
 
-func (m *MCMCPprotocol) Set(value string) error{
+func (m *MCMCPprotocol) Set(value string) error {
 	switch value {
 	case "stdio", "sse", "streamable-http":
 		*m = MCMCPprotocol(value)

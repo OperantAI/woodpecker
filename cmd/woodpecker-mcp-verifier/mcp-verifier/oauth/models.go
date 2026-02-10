@@ -1,3 +1,4 @@
+// Package oauth implements the oauth2 flow as an MCP client for servers that required that auth method
 package oauth
 
 import (
@@ -130,15 +131,6 @@ type AuthServerMetadata struct {
 	TokenEndpoint         string `json:"token_endpoint"`
 }
 
-type DeviceAuthResponse struct {
-	DeviceCode              string `json:"device_code"`
-	UserCode                string `json:"user_code"`
-	VerificationURI         string `json:"verification_uri"`
-	VerificationURIComplete string `json:"verification_uri_complete,omitempty"`
-	ExpiresIn               int    `json:"expires_in"`
-	Interval                int    `json:"interval"`
-}
-
 type MCPServerCacheConfig map[string]TokenResponse
 
 type TokenResponse struct {
@@ -161,13 +153,6 @@ type IOAuthManager interface {
 	CheckCurrentToken(issuer string) (*TokenResponse, error)
 	// SaveCacheToken saves the token response for subsequent usage in the app cache creds file
 	SaveCacheInfo(issuer string, token *TokenResponse) error
-}
-
-type TokenStore interface {
-	Load() (*oauth2.Token, error)
-	Save(*oauth2.Token) error
-	Token() (*oauth2.Token, error)
-	Delete() error
 }
 
 type OauthManager struct{}

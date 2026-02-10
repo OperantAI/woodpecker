@@ -1,5 +1,5 @@
-// mcpverifier ...
-
+// Package mcpverifier defines the creation of an MCP client that will connect to an MCP server, discover their tools
+// and send a bulk of payload requests defined in a json config file.
 package mcpverifier
 
 import (
