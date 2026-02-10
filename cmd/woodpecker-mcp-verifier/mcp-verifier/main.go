@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"github.com/operantai/woodpecker/cmd/woodpecker-mcp-verifier/mcp-verifier/oauth"
 	"github.com/operantai/woodpecker/cmd/woodpecker-mcp-verifier/utils"
 	"github.com/operantai/woodpecker/internal/output"
 	"github.com/spf13/viper"
@@ -99,10 +100,10 @@ func setupBulkOperation(ctx context.Context, cs *mcp.ClientSession, allTools *[]
 
 // Configures the MCP protocol to use based on the user selection
 func getTransport(serverURL string, protocol utils.MCMCPprotocol, cmdArgs *[]string, mcpConfig MCPConfigConnection) mcp.Transport {
-	var opts *HTTPTransportOptions
+	var opts *oauth.HTTPTransportOptions
 	woodPeckerEnabled := strings.ToLower(viper.GetString("WOODPECKER_OAUTH_CLIENT_ID"))
 	if woodPeckerEnabled == "true" {
-		opts = &HTTPTransportOptions{
+		opts = &oauth.HTTPTransportOptions{
 			Base: &http.Transport{
 				MaxIdleConns:        100,              // Max idle connections
 				IdleConnTimeout:     90 * time.Second, // Idle connection timeout
@@ -141,7 +142,7 @@ func getTransport(serverURL string, protocol utils.MCMCPprotocol, cmdArgs *[]str
 func (m *mcpClient) ToolCallWithPayload(ctx context.Context, cs IMCPClientSession, tool mcp.Tool, mPayload PayloadContent) error {
 	field, exists := checkToolTypeParams(tool.InputSchema)
 	if !exists {
-		return errors.New("No input field found of type string in the input schema for the tool")
+		return errors.New("no input field found of type string in the input schema for the tool")
 	}
 	params := map[string]any{
 		field: mPayload.Content,

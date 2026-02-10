@@ -1,9 +1,8 @@
 // Oauth client implementation taken from https://github.com/modelcontextprotocol/go-sdk/blob/main/auth/client.go
 
-package mcpverifier
+package oauth
 
 import (
-	"bytes"
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
@@ -15,163 +14,34 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"runtime"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/google/uuid"
+
 	"github.com/operantai/woodpecker/internal/output"
 	"github.com/spf13/viper"
 	"golang.org/x/oauth2"
 )
 
-// An OAuthHandler conducts an OAuth flow and returns a [oauth2.TokenSource] if the authorization
-// is approved, or an error if not.
-// The handler receives the HTTP request and response that triggered the authentication flow.
-// To obtain the protected resource metadata, call [oauthex.GetProtectedResourceMetadataFromHeader].
-type OAuthHandler func(req *http.Request, res *http.Response) (oauth2.TokenSource, error)
-
-// HTTPTransport is an [http.RoundTripper] that follows the MCP
-// OAuth protocol when it encounters a 401 Unauthorized response.
-type HTTPTransport struct {
-	handler OAuthHandler
-	mu      sync.Mutex // protects opts.Base
-	opts    HTTPTransportOptions
-}
-
-// NewHTTPTransport returns a new [*HTTPTransport].
-// The handler is invoked when an HTTP request results in a 401 Unauthorized status.
-// It is called only once per transport. Once a TokenSource is obtained, it is used
-// for the lifetime of the transport; subsequent 401s are not processed.
-func NewHTTPTransport(handler OAuthHandler, opts *HTTPTransportOptions) (*HTTPTransport, error) {
-	if handler == nil {
-		return nil, errors.New("handler cannot be nil")
-	}
-	t := &HTTPTransport{
-		handler: handler,
-	}
-	if opts != nil {
-		t.opts = *opts
-	}
-	if t.opts.Base == nil {
-		t.opts.Base = http.DefaultTransport
-	}
-	return t, nil
-}
-
-// HTTPTransportOptions are options to [NewHTTPTransport].
-type HTTPTransportOptions struct {
-	// Base is the [http.RoundTripper] to use.
-	// If nil, [http.DefaultTransport] is used.
-	Base          http.RoundTripper
-	CustomHeaders map[string]string
-}
-
-func (t *HTTPTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	t.mu.Lock()
-	base := t.opts.Base
-	t.mu.Unlock()
-
-	var (
-		// If haveBody is set, the request has a nontrivial body, and we need avoid
-		// reading (or closing) it multiple times. In that case, bodyBytes is its
-		// content.
-		haveBody  bool
-		bodyBytes []byte
-	)
-	if req.Body != nil && req.Body != http.NoBody {
-		// if we're setting Body, we must mutate first.
-		req = req.Clone(req.Context())
-		haveBody = true
-		var err error
-		bodyBytes, err = io.ReadAll(req.Body)
-		if err != nil {
-			return nil, err
-		}
-		// Now that we've read the request body, http.RoundTripper requires that we
-		// close it.
-		req.Body.Close() // ignore error
-		req.Body = io.NopCloser(bytes.NewReader(bodyBytes))
-	}
-
-	resp, err := base.RoundTrip(req)
-	if err != nil {
-		return nil, err
-	}
-	if resp.StatusCode != http.StatusUnauthorized {
-		return resp, nil
-	}
-	if _, ok := base.(*oauth2.Transport); ok {
-		// We failed to authorize even with a token source; give up.
-		return resp, nil
-	}
-
-	resp.Body.Close()
-	// Try to authorize.
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	// If we don't have a token source, get one by following the OAuth flow.
-	// (We may have obtained one while t.mu was not held above.)
-	// TODO: We hold the lock for the entire OAuth flow. This could be a long
-	// time. Is there a better way?
-	if _, ok := t.opts.Base.(*oauth2.Transport); !ok {
-		ts, err := t.handler(req, resp)
-		if err != nil {
-			return nil, err
-		}
-		t.opts.Base = &oauth2.Transport{Base: t.opts.Base, Source: ts}
-	}
-
-	// If we don't have a body, the request is reusable, though it will be cloned
-	// by the base. However, if we've had to read the body, we must clone.
-	if haveBody {
-		req = req.Clone(req.Context())
-		req.Body = io.NopCloser(bytes.NewReader(bodyBytes))
-	}
-
-	// Loop over the custom headers and set them
-	for key, val := range t.opts.CustomHeaders {
-		req.Header.Add(key, val)
-	}
-
-	return t.opts.Base.RoundTrip(req)
-}
-
-type ProtectedResourceMetadata struct {
-	AuthorizationServers []string `json:"authorization_servers"`
-}
-
-type AuthServerMetadata struct {
-	AuthorizationEndpoint string `json:"authorization_endpoint"`
-	TokenEndpoint         string `json:"token_endpoint"`
-}
-
-type DeviceAuthResponse struct {
-	DeviceCode              string `json:"device_code"`
-	UserCode                string `json:"user_code"`
-	VerificationURI         string `json:"verification_uri"`
-	VerificationURIComplete string `json:"verification_uri_complete,omitempty"`
-	ExpiresIn               int    `json:"expires_in"`
-	Interval                int    `json:"interval"`
-}
-
-type TokenResponse struct {
-	AccessToken string `json:"access_token"`
-	TokenType   string `json:"token_type"`
-	Scope       string `json:"scope"`
-}
-
 // IMPROVE_ME: Fix the correct implementation of the Oauth flow with optimized code
-func oauthHandler(req *http.Request, res *http.Response) (oauth2.TokenSource, error) {
+func OauthHandler(req *http.Request, res *http.Response) (oauth2.TokenSource, error) {
 
 	oauthFlow := NewOauthFlow()
 	authHeader := res.Header.Get("Www-Authenticate")
 	oauthClientID := viper.GetString("OAUTH_CLIENT_ID")
 	if len(oauthClientID) == 0 {
 		return nil, fmt.Errorf("WOODPECKER_OAUTH_CLIENT_ID not set for oauth flow")
+	}
+
+	oauthClientSecret := viper.GetString("OAUTH_CLIENT_SECRET")
+	if len(oauthClientSecret) == 0 {
+		return nil, fmt.Errorf("WOODPECKER_OAUTH_CLIENT_SECRET not set for oauth flow")
 	}
 	oauthScopes := viper.GetString("OAUTH_SCOPES")
 	if len(oauthScopes) == 0 {
@@ -184,25 +54,52 @@ func oauthHandler(req *http.Request, res *http.Response) (oauth2.TokenSource, er
 
 	metadataURL, err := oauthFlow.ExtractResourceMetadata(authHeader)
 	if err != nil {
-		output.WriteFatal("Error: %v", err)
+		return nil, err
 	}
 
 	prm, err := oauthFlow.FetchProtectedResource(metadataURL)
 	if err != nil {
-		output.WriteFatal("Error: %v", err)
+		return nil, err
+	}
+
+	oauthManager := NewOauthManager()
+	tokenSource, err := oauthFlow.LoadCachedTokenSource(prm.AuthorizationServers[0], oauthManager)
+	if err == nil {
+		return tokenSource, err
 	}
 
 	authMeta, err := oauthFlow.FetchAuthServerMetadata(prm.AuthorizationServers[0])
 	if err != nil {
-		output.WriteFatal("Error: %v", err)
+		return nil, err
 	}
 
-	oauthToken, err := oauthFlow.GetOauthTokenSource(authMeta, oauthClientID, fmt.Sprintf("http://localhost:%s/oauth/callback", callBackPort), oauthScopes)
+	oauthTokenResponse, err := oauthFlow.GetOauthTokenSource(authMeta, oauthClientID, oauthClientSecret, fmt.Sprintf("http://localhost:%s/oauth/callback", callBackPort), oauthScopes)
 	if err != nil {
-		output.WriteFatal("Error: %v", err)
+		return nil, err
 	}
 
-	return oauthToken, nil
+	err = oauthManager.SaveCacheInfo(prm.AuthorizationServers[0], oauthTokenResponse)
+	if err != nil {
+		return nil, err
+	}
+
+	return oauth2.StaticTokenSource(&oauth2.Token{
+		AccessToken: oauthTokenResponse.AccessToken,
+		TokenType:   "Bearer",
+	}), nil
+}
+
+func (o *OauthFlow) LoadCachedTokenSource(issuer string, oAuthManager IOAuthManager) (oauth2.TokenSource, error) {
+
+	oauthTokenResponse, err := oAuthManager.CheckCurrentToken(issuer)
+	if err != nil {
+		return nil, err
+	}
+
+	return oauth2.StaticTokenSource(&oauth2.Token{
+		AccessToken: oauthTokenResponse.AccessToken,
+		TokenType:   "Bearer",
+	}), nil
 }
 
 func (o *OauthFlow) ExtractResourceMetadata(authHeader string) (string, error) {
@@ -256,10 +153,11 @@ func (o *OauthFlow) FetchAuthServerMetadata(issuer string) (*AuthServerMetadata,
 
 func (o *OauthFlow) GetOauthTokenSource(
 	meta *AuthServerMetadata,
-	clientID string,
-	redirectURI string,
+	clientID,
+	clientSecret,
+	redirectURI,
 	scope string,
-) (oauth2.TokenSource, error) {
+) (*TokenResponse, error) {
 
 	verifier, err := generateCodeVerifier()
 	if err != nil {
@@ -303,17 +201,14 @@ func (o *OauthFlow) GetOauthTokenSource(
 		meta.TokenEndpoint,
 		clientID,
 		code,
-		redirectURI,
+		clientSecret, redirectURI,
 		verifier,
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	return oauth2.StaticTokenSource(&oauth2.Token{
-		AccessToken: token.AccessToken,
-		TokenType:   "Bearer",
-	}), nil
+	return token, nil
 }
 
 func oauthAuthorizationServerMetadataURL(issuer string) (string, error) {
@@ -424,15 +319,17 @@ func waitForAuthCode(
 }
 
 func exchangeCodeForToken(
-	tokenEndpoint string,
-	clientID string,
-	code string,
-	redirectURI string,
+	tokenEndpoint,
+	clientID,
+	code,
+	clientSecret,
+	redirectURI,
 	codeVerifier string,
 ) (*TokenResponse, error) {
 
 	data := url.Values{}
 	data.Set("client_id", clientID)
+	data.Set("client_secret", clientSecret)
 	data.Set("code", code)
 	data.Set("redirect_uri", redirectURI)
 	data.Set("code_verifier", codeVerifier)
@@ -445,8 +342,9 @@ func exchangeCodeForToken(
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/json")
+	req.Header.Set("User-Agent", "mcp-client")
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -457,11 +355,11 @@ func exchangeCodeForToken(
 	body, _ := io.ReadAll(resp.Body)
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("token exchange failed. Status code (%d): %s", resp.StatusCode, body)
+		return nil, fmt.Errorf("token exchange failed. Status code (%d): %s", resp.StatusCode, string(body))
 	}
 
 	var tok TokenResponse
-	if err := json.NewDecoder(resp.Body).Decode(&tok); err != nil {
+	if err := json.Unmarshal(body, &tok); err != nil {
 		return nil, err
 	}
 
@@ -483,4 +381,99 @@ func openBrowser(url string) error {
 	err := cmd.Start()
 	return err
 
+}
+
+func (o *OauthManager) CheckCurrentToken(issuer string) (*TokenResponse, error) {
+
+	appName := viper.GetString("WOODPECKER_APP_NAME")
+	file, err := checkCredsPath(appName)
+	if err != nil {
+		return nil, err
+	}
+
+	existingServers, err := checkExistingCacheConfig(file)
+	if err != nil {
+		return nil, err
+	}
+
+	tokenSource, ok := existingServers[issuer]
+	if !ok {
+		return nil, fmt.Errorf("no token found for issuer: %s", issuer)
+	}
+
+	return &tokenSource, nil
+}
+
+func (o *OauthManager) SaveCacheInfo(issuer string, token *TokenResponse) error {
+
+	appName := viper.GetString("WOODPECKER_APP_NAME")
+	file, err := checkCredsPath(appName)
+	if err != nil {
+		return err
+	}
+
+	existingServers, err := checkExistingCacheConfig(file)
+	if err != nil {
+		return err
+	}
+
+	_, ok := existingServers[issuer]
+	if !ok {
+		existingServers[issuer] = *token
+	}
+
+	data, err := json.MarshalIndent(existingServers, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(file, data, 000)
+}
+
+func checkExistingCacheConfig(filePath string) (MCPServerCacheConfig, error) {
+	var currentConfig MCPServerCacheConfig
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := json.Unmarshal(data, &currentConfig); err != nil {
+		return nil, err
+	}
+	return currentConfig, nil
+}
+
+func checkCredsPath(appName string) (configPath string, err error) {
+	dir, err := os.UserHomeDir()
+	if err != nil {
+		return "", nil
+	}
+
+	dirPath := filepath.Join(dir, ".config", appName, "creds")
+	filePath := filepath.Join(dirPath, "creds.json")
+	if err := os.MkdirAll(dirPath, 0700); err != nil {
+		return "", err
+	}
+	file, err := os.OpenFile(filePath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0666)
+
+	if errors.Is(err, os.ErrExist) {
+		output.WriteInfo("File already exists. Skipping initialization.")
+		return filePath, nil
+
+	} else if err != nil {
+		output.WriteError("Error opening file: %v\n", err)
+		return "", err
+	}
+	defer file.Close()
+
+	// Define initial basic map structure
+	tokenConfig := &MCPServerCacheConfig{}
+	encoder := json.NewEncoder(file)
+	encoder.SetIndent("", "  ")
+	if err := encoder.Encode(tokenConfig); err != nil {
+		output.WriteError("Error writing JSON: %v\n", err)
+		return "", err
+	}
+
+	return filePath, nil
 }

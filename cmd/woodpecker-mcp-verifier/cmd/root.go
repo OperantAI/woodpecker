@@ -72,4 +72,11 @@ func init() {
 	if err := viper.BindPFlag("payload-path", runCmd.Flags().Lookup("payload-path")); err != nil {
 		output.WriteFatal("%v", err)
 	}
+
+	// Sets App name
+	appName := viper.GetString("WOODPECKER_APP_NAME")
+	if appName == "" {
+		output.WriteInfo("Setting WOODPECKER_APP_NAME to woodpecker-mcp-verifier")
+		viper.Set("WOODPECKER_APP_NAME", "woodpecker-mcp-verifier")
+	}
 }

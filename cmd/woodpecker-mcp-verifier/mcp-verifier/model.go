@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"github.com/operantai/woodpecker/cmd/woodpecker-mcp-verifier/mcp-verifier/oauth"
 	"github.com/operantai/woodpecker/internal/output"
-	"golang.org/x/oauth2"
 )
 
 var (
@@ -32,10 +32,10 @@ func (t *HeaderTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 }
 
 // GetHTTPClient returns a singleton instance of http.Client.
-func GetHTTPClient(opts *HTTPTransportOptions) *http.Client {
+func GetHTTPClient(opts *oauth.HTTPTransportOptions) *http.Client {
 
 	once.Do(func() {
-		transport, err := NewHTTPTransport(oauthHandler, opts)
+		transport, err := oauth.NewHTTPTransport(oauth.OauthHandler, opts)
 		if err != nil {
 			output.WriteFatal("An error performing the Oauth flow happened: %v", err)
 		}
@@ -79,18 +79,4 @@ type IMCPClientSession interface {
 	//
 	// The params.Arguments can be any value that marshals into a JSON object.
 	CallTool(ctx context.Context, params *mcp.CallToolParams) (*mcp.CallToolResult, error)
-}
-
-// IOauthFlow implement the oauth flow basic methods
-type IOauthFlow interface {
-	ExtractResourceMetadata(authHeader string) (string, error)
-	FetchProtectedResource(metadataURL string) (*ProtectedResourceMetadata, error)
-	FetchAuthServerMetadata(authServerURL string) (*AuthServerMetadata, error)
-	GetOauthTokenSource(meta *AuthServerMetadata, clientID, redirectURI, scope string) (oauth2.TokenSource, error)
-}
-
-type OauthFlow struct{}
-
-func NewOauthFlow() IOauthFlow {
-	return &OauthFlow{}
 }
