@@ -36,6 +36,7 @@ type MCPConfig struct {
 type MCPConfigConnection struct {
 	CustomHeaders map[string]string `json:"customHeaders"`
 	Payloads      []PayloadContent  `json:"payloads"`
+	AllowedTools  []string          `json:"allowedTools"`
 }
 
 type PayloadContent struct {

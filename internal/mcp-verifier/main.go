@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -51,11 +52,18 @@ func RunClient(ctx context.Context, serverURL string, protocol utils.MCMCPprotoc
 			return err
 		}
 
+		// Collect tools and filter the allowed ones, by default all
 		tools := cs.Tools(ctx, nil)
-		// Collect all tools first (unchanged)
+		allowedTools := mcpConfig.Config.AllowedTools
 		var allTools []mcp.Tool
 		for tool := range tools {
-			allTools = append(allTools, *tool)
+			if len(allowedTools) > 0 {
+				if slices.Contains(allowedTools, tool.Name) {
+					allTools = append(allTools, *tool)
+				}
+			} else {
+				allTools = append(allTools, *tool)
+			}
 		}
 		if err := setupBulkOperation(ctx, cs, &allTools, &mcpConfig.Config.Payloads, mcpClient); err != nil {
 			return err
