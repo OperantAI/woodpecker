@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestPostmanCollections(t *testing.T) {
+func TestMCPClientVerifier(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Woodpecker Postman Collection Suite")
+	RunSpecs(t, "Woodpecker Test Suite")
 }
