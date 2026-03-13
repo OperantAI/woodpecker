@@ -60,9 +60,11 @@ type IMCPClient interface {
 }
 
 type mcpClient struct {
-	validator   vschema.IvSchema
-	aiFormatter vschema.IAIFormatter
-	useAi       bool
+	validator      vschema.IvSchema
+	aiFormatter    vschema.IAIFormatter
+	useAi          bool
+	name           string
+	experimentType string
 }
 
 type Option func(*mcpClient)
@@ -76,6 +78,18 @@ func WithValidator(validator vschema.IvSchema) Option {
 func WithAIFormatter(useAI bool) Option {
 	return func(mc *mcpClient) {
 		mc.useAi = useAI
+	}
+}
+
+func WithName(name string) Option {
+	return func(mc *mcpClient) {
+		mc.name = name
+	}
+}
+
+func WithExperimentType(experimentType string) Option {
+	return func(mc *mcpClient) {
+		mc.experimentType = experimentType
 	}
 }
 
@@ -111,4 +125,11 @@ type IMCPClientSession interface {
 	//
 	// The params.Arguments can be any value that marshals into a JSON object.
 	CallTool(ctx context.Context, params *mcp.CallToolParams) (*mcp.CallToolResult, error)
+}
+
+type ToolResponses struct {
+	ToolName   string   `json:"toolName"`
+	Response   string   `json:"response"`
+	Tags       []string `json:"tags"`
+	Parameters any      `json:"parameters"`
 }

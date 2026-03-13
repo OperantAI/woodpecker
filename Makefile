@@ -17,6 +17,9 @@ build-woodpecker-ai-verifier: ## Build woodpecker AI verifier container
 build-woodpecker-ai-app: ## Build woodpecker AI app container
 	@docker build -f build/Dockerfile.woodpecker-ai-app .
 
+build-woodpecker-mcp-verifier: ## Builds the woodpecker MCP verifier client tool
+	@go build -o "bin/woodpecker-mcp-verifier" -ldflags $(LD_FLAGS) cmd/woodpecker-mcp-verifier/main.go
+
 # ==================================================================================== #
 # QUALITY
 # ==================================================================================== #

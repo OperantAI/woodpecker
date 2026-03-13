@@ -24,13 +24,14 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+const tmpFileDir = "/tmp/woodpecker"
+
 // RunClient entry point to start the MCP client connection
-func RunClient(ctx context.Context, serverURL string, protocol utils.MCMCPprotocol, cmdArgs *[]string, payloadPath string) error {
-	output.WriteInfo("Connecting to server: %s", serverURL)
+func RunClient(ctx context.Context, serverURL string, protocol utils.MCMCPprotocol, cmdArgs *[]string, payloadPath, experimentType, name string) error {
 	output.WriteInfo("Using protocol: %s", protocol)
 
 	sValidator := vschema.NewVSchema()
-	mcpClient, err := NewMCPClient(WithValidator(sValidator), WithAIFormatter(viper.GetBool("USE_AI_FORMATTER")))
+	mcpClient, err := NewMCPClient(WithValidator(sValidator), WithAIFormatter(viper.GetBool("USE_AI_FORMATTER")), WithExperimentType(experimentType), WithName(name))
 	if err != nil {
 		return err
 	}
@@ -70,6 +71,11 @@ func RunClient(ctx context.Context, serverURL string, protocol utils.MCMCPprotoc
 		}
 
 	}
+	mergedPath, err := mergeTempJSONFilesStreaming(tmpFileDir, experimentType, name)
+	if err != nil {
+		return err
+	}
+	output.WriteInfo("Results saved in: %s", mergedPath)
 	return nil
 }
 
@@ -185,13 +191,30 @@ func (m *mcpClient) ToolCallWithPayload(ctx context.Context, cs IMCPClientSessio
 		if err != nil {
 			return err
 		}
-		resp := map[string]any{
-			"tool":     tool.Name,
-			"response": string(data),
-			"tags":     mPayload.Tags,
+		resp := make(map[string][]ToolResponses)
+
+		resp[tool.Name] = []ToolResponses{{
+			ToolName:   tool.Name,
+			Response:   string(data),
+			Tags:       mPayload.Tags,
+			Parameters: params,
+		},
 		}
-		output.WriteInfo("Tool response ...")
-		output.WriteJSON(resp)
+		resultJSON, err := json.Marshal(resp)
+		if err != nil {
+			return fmt.Errorf("failed to marshal experiment results: %w", err)
+		}
+		output.WriteInfo("Saving %s response ...", tool.Name)
+		file, err := createTempFile(m.experimentType, m.name)
+		if err != nil {
+			return fmt.Errorf("unable to create file cache for experiment results %w", err)
+		}
+
+		_, err = file.Write(resultJSON)
+		if err != nil {
+			return fmt.Errorf("failed to write experiment results: %w", err)
+		}
+
 	}
 	return nil
 }

@@ -14,7 +14,7 @@ The tool is an MCP client that will perform the following actions:
 In order to run the tool here are some of the input parameters you can pass:
 
 ```bash
-go run cmd/woodpecker-mcp-verifier/main.go run -h
+woodpecker-mcp-verifier -h
 
 Run a MCP client verifier as a Woodpecker component
 

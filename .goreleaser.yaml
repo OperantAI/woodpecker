@@ -13,6 +13,17 @@ builds:
       - "-X github.com/operantai/woodpecker/cmd/woodpecker/cmd.GitCommit={{.Commit}}"
       - "-X github.com/operantai/woodpecker/cmd/woodpecker/cmd.Version={{.Version}}"
       - "-X github.com/operantai/woodpecker/cmd/woodpecker/cmd.BuildDate={{ .Date }}"
+  - env:
+      - CGO_ENABLED=0
+    main: ./cmd/woodpecker-mcp-verifier
+    goos:
+      - linux
+      - windows
+      - darwin
+    ldflags:
+      - "-X github.com/operantai/woodpecker/cmd/woodpecker-mcp-verifier/cmd.GitCommit={{.Commit}}"
+      - "-X github.com/operantai/woodpecker/cmd/woodpecker-mcp-verifier/cmd.Version={{.Version}}"
+      - "-X github.com/operantai/woodpecker/cmd/woodpecker-mcp-verifier/cmd.BuildDate={{ .Date }}"
 
 archives:
   - format: tar.gz

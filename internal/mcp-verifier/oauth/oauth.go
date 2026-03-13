@@ -472,7 +472,7 @@ func checkCredsPath(appName string) (configPath string, err error) {
 	file, err := os.OpenFile(filePath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0666)
 
 	if errors.Is(err, os.ErrExist) {
-		output.WriteInfo("File: %s already exists. Using cached toke.", filePath)
+		output.WriteInfo("File: %s already exists. Using cached token.", filePath)
 		return filePath, nil
 
 	} else if err != nil {

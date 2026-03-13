@@ -21,7 +21,9 @@ jobs:
         go-version: ${{ env.go_version }}
 
     - name: Build
-      run: make build
+      run: |
+        make build
+        make build-woodpecker-mcp-verifier
 
     - name: Test
       run: make test
