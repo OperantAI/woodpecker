@@ -60,7 +60,6 @@ func mergeTempJSONFilesStreaming(dir, experimentType, experiment string) (string
 
 				dataCh <- tmp
 
-				// fmt.Printf("Removing file: %s", path)
 				// cleanup temp file
 				_ = os.Remove(path)
 			}

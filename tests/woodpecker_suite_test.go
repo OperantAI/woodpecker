@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestMCPClientVerifier(t *testing.T) {
+func TestWoodpeckerVerifier(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Woodpecker Test Suite")
 }

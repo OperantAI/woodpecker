@@ -205,7 +205,6 @@ func (m *mcpClient) ToolCallWithPayload(ctx context.Context, cs IMCPClientSessio
 			return fmt.Errorf("failed to marshal experiment results: %w", err)
 		}
 		output.WriteInfo("Saving %s response ...", tool.Name)
-		// output.WriteJSON(resp)
 		file, err := createTempFile(m.experimentType, m.name)
 		if err != nil {
 			return fmt.Errorf("unable to create file cache for experiment results %w", err)

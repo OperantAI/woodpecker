@@ -38,7 +38,6 @@ func (a *AIFormatter) AnalyzeSchema(inputSchema any) (map[string]any, error) {
 	}
 
 	output.WriteInfo("Generating AI response ...")
-	// output.WriteJSON(result)
 
 	return result, nil
 }
